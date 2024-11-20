@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Person - Professional Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #6A0DAD, #D500F9);
+            color: white;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 900px;
+            margin-top: 50px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .btn-custom {
+            background: #7F3FBF;
+            color: white;
+            border-radius: 50px;
+            padding: 15px 30px;
+            border: none;
+            width: 100%;
+            font-weight: bold;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .btn-custom:hover {
+            background: #D500F9;
+            transform: scale(1.05);
+        }
+
+        .data-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            display: none;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .info-field {
+            font-weight: bold;
+            color: #D500F9;
+        }
+
+        .info-value {
+            color: white;
+        }
+
+        .btn-copy, .btn-export {
+            background: #333;
+            color: white;
+            border-radius: 50px;
+            margin-top: 10px;
+            padding: 12px 25px;
+            border: none;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .btn-copy:hover, .btn-export:hover {
+            background: #555;
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generate Person</h1>
+        
+        <!-- Botão para gerar pessoa -->
+        <button class="btn btn-custom" id="generateButton">Generate Person</button>
+
+        <!-- Cartão de dados gerados -->
+        <div id="personData" class="data-card">
+            <h3>Person Details</h3>
+            <div id="dataFields"></div>
+            <button class="btn btn-export" id="exportTxt">Export to TXT</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('generateButton').addEventListener('click', () => {
+            fetch('/generate-person')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        const person = data;
+                        let dataHtml = '';
+                        let personDataText = ''; // Para gerar o conteúdo do arquivo TXT
+
+                        Object.keys(person).forEach(key => {
+                            const value = person[key];
+
+                            // Se o valor for um objeto, converta para string ou mostre suas propriedades
+                            if (typeof value === 'object' && value !== null) {
+                                // Se for um objeto, vamos verificar se ele contém um número de cartão
+                                if (key === 'credit_card') {
+                                    const cardDetails = `Card Number: ${value.number}, Expiration: ${value.expiration}`;
+                                    dataHtml += `<p><span class="info-field">${key.replace('_', ' ').toUpperCase()}:</span> 
+                                                    <span class="info-value">${cardDetails}</span></p>`;
+                                    personDataText += `Card Number: ${value.number}\nExpiration: ${value.expiration}\n`;
+                                } else {
+                                    dataHtml += `<p><span class="info-field">${key.replace('_', ' ').toUpperCase()}:</span> 
+                                                    <span class="info-value">${JSON.stringify(value)}</span></p>`;
+                                    personDataText += `${key}: ${JSON.stringify(value)}\n`;
+                                }
+                            } else {
+                                dataHtml += `<p><span class="info-field">${key.replace('_', ' ').toUpperCase()}:</span> 
+                                                <span class="info-value">${value}</span></p>`;
+                                personDataText += `${key}: ${value}\n`;
+                            }
+
+                            // Adicionando botão de copiar para cada campo
+                            dataHtml += `
+                                <button class="btn btn-copy" onclick="copyToClipboard('${value}')">Copy</button>
+                                <br><br>
+                            `;
+                        });
+
+                        // Exibe os dados no painel
+                        document.getElementById('dataFields').innerHTML = dataHtml;
+                        document.getElementById('personData').style.display = 'block';
+
+                        // Botão de exportação em TXT
+                        document.getElementById('exportTxt').onclick = function () {
+                            const personName = person.name.replace(' ', '_') || 'generated_person'; // Nome do arquivo
+                            const blob = new Blob([personDataText], { type: 'text/plain;charset=utf-8' });
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = `${personName}.txt`;
+                            link.click();
+                        };
+                    }
+                });
+        });
+
+        // Função para copiar para a área de transferência
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        }
+    </script>
+</body>
+</html>
